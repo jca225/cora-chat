@@ -32,10 +32,26 @@ export function useChat() {
       setMessages(state.messages || []);
       setSelectedProgram(state.program || state.selected_program || null);
 
-      // Check if last assistant message was a choice
-      if (!state.selected_program && state.messages?.length) {
-        // We may need to re-render choice — trigger a non-stream chat with empty? 
-        // Actually, let's just show the messages as-is
+      // If no program selected yet, re-fetch choice payload so options render
+      if (!state.selected_program && !state.program) {
+        try {
+          const res = await api.chat(conversation_id, "");
+          if (isChoicePayload(res)) {
+            setChoicePayload(res);
+            // Replace or add the assistant message with the choice reply
+            if (state.messages?.length) {
+              const last = state.messages[state.messages.length - 1];
+              if (last.role === "assistant") {
+                // Update last message content to match choice reply
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { ...updated[updated.length - 1], content: res.reply };
+                  return updated;
+                });
+              }
+            }
+          }
+        } catch { /* silent — choice will just not show */ }
       }
     } catch {
       // Create new conversation
