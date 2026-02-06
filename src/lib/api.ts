@@ -93,4 +93,13 @@ export const api = {
     }),
   validateIntake: () =>
     request<{ ok: boolean; errors: string[] }>("/api/admin/intake/validate"),
+
+  // Instructions
+  getInstruction: (program: string) =>
+    request<{ program: string; text: string }>(`/api/admin/instructions/${encodeURIComponent(program)}`),
+  putInstruction: (program: string, text: string) =>
+    request<{ ok: boolean; program: string }>(`/api/admin/instructions/${encodeURIComponent(program)}`, {
+      method: "PUT",
+      body: JSON.stringify({ text }),
+    }),
 };
