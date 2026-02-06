@@ -23,6 +23,18 @@ export function useChat() {
     localStorage.setItem(CONV_KEY, id);
   };
 
+  const fetchChoicePayload = useCallback(async (conversation_id: string) => {
+    try {
+      const res = await api.chat(conversation_id, "");
+      console.log("[chat] backend reply:", res);
+      if (isChoicePayload(res)) {
+        setChoicePayload(res);
+      }
+    } catch {
+      // silent — choice will just not show
+    }
+  }, []);
+
   const initialize = useCallback(async () => {
     setLoading(true);
     try {
@@ -34,24 +46,7 @@ export function useChat() {
 
       // If no program selected yet, re-fetch choice payload so options render
       if (!state.selected_program && !state.program) {
-        try {
-          const res = await api.chat(conversation_id, "");
-          if (isChoicePayload(res)) {
-            setChoicePayload(res);
-            // Replace or add the assistant message with the choice reply
-            if (state.messages?.length) {
-              const last = state.messages[state.messages.length - 1];
-              if (last.role === "assistant") {
-                // Update last message content to match choice reply
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  updated[updated.length - 1] = { ...updated[updated.length - 1], content: res.reply };
-                  return updated;
-                });
-              }
-            }
-          }
-        } catch { /* silent — choice will just not show */ }
+        await fetchChoicePayload(conversation_id);
       }
     } catch {
       // Create new conversation
@@ -62,7 +57,7 @@ export function useChat() {
       } catch { /* silent */ }
     }
     setLoading(false);
-  }, []);
+  }, [fetchChoicePayload]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -105,6 +100,7 @@ export function useChat() {
         conversationId,
         text,
         (chunk) => {
+          console.log("[chat] backend stream chunk:", chunk);
           gotDelta = true;
           // Check if this is a JSON choice payload
           try {
@@ -130,7 +126,29 @@ export function useChat() {
         () => {
           cancelAnimationFrame(rafRef.current);
           flushUI();
+          console.log("[chat] backend stream reply:", streamTextRef.current);
           setStreaming(false);
+
+          // Stream selection prompt may come back as plain text only.
+          // If no program is selected yet, fetch full choice payload so buttons can render.
+          const activeConversationId = conversationId || localStorage.getItem(CONV_KEY);
+          if (!activeConversationId) return;
+
+          void (async () => {
+            try {
+              const state = await api.getMessages(activeConversationId);
+              const currentProgram = state.program || state.selected_program || null;
+              setSelectedProgram(currentProgram);
+
+              if (!currentProgram) {
+                await fetchChoicePayload(activeConversationId);
+              } else {
+                setChoicePayload(null);
+              }
+            } catch {
+              // silent
+            }
+          })();
         },
         async () => {
           // Stream error — fallback to non-stream
@@ -138,6 +156,7 @@ export function useChat() {
           if (!gotDelta) {
             try {
               const res = await api.chat(conversationId, text);
+              console.log("[chat] backend reply:", res);
               if (isChoicePayload(res)) {
                 setChoicePayload(res);
                 setMessages((prev) => {
@@ -170,7 +189,7 @@ export function useChat() {
 
       abortRef.current = controller;
     },
-    [conversationId, streaming]
+    [conversationId, streaming, fetchChoicePayload]
   );
 
   const newChat = useCallback(async () => {

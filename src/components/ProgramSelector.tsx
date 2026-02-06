@@ -2,7 +2,7 @@ import { ChoicePayload } from "@/types/chat";
 
 interface Props {
   payload: ChoicePayload;
-  onSelect: (value: string) => void;
+  onSelect: (selectedText: string) => void;
   disabled?: boolean;
 }
 
@@ -15,7 +15,7 @@ export function ProgramSelector({ payload, onSelect, disabled }: Props) {
           {payload.options.map((opt) => (
             <button
               key={opt.value}
-              onClick={() => onSelect(opt.value)}
+              onClick={() => onSelect(opt.label?.trim() || opt.value)}
               disabled={disabled}
               className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
             >

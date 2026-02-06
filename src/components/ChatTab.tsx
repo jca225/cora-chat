@@ -91,7 +91,7 @@ export function ChatTab() {
               <div className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:300ms]" />
             </div>
           </div>
-        ) : messages.length === 0 ? (
+        ) : messages.length === 0 && !choicePayload ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
               <MessageSquarePlus className="w-6 h-6 text-primary" />
